@@ -22,6 +22,7 @@ libosmocore_la_LIBADD = \
 	$(NULL)
 
 if ENABLE_PSEUDOTALLOC
+# Statically include pseudotalloc into libosmocore to avoid separate linkage requirements
 libosmocore_la_LIBADD += ../pseudotalloc/libpseudotalloc.la
 endif
 

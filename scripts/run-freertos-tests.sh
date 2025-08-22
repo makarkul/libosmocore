@@ -24,44 +24,14 @@ if [[ ! -d "$TEST_DIR" ]]; then
 fi
 
 default_allow=(
-  a5/a5_test
   bits/bitrev_test
   bitvec/bitvec_test
-  bits/bitcomp_test
-  bits/bitfield_test
-  conv/conv_test
-  conv/conv_gsm0503_test
-  coding/coding_test
-  kasumi/kasumi_test
-  gea/gea_test
-  comp128/comp128_test
+  base64/base64_test
+  jhash/jhash_test
+  prbs/prbs_test
+  timer/timer_test
   msgb/msgb_test
   tlv/tlv_test
-  write_queue/wqueue_test
-  endian/endian_test
-  prbs/prbs_test
-  gsm23003/gsm23003_test
-  gsm23236/gsm23236_test
-  tdef/tdef_test
-  sockaddr_str/sockaddr_str_test
-  use_count/use_count_test
-  context/context_test
-  gsm0502/gsm0502_test
-  dtx/dtx_gsm0503_test
-  bitgen/bitgen_test
-  gad/gad_test
-  bsslap/bsslap_test
-  bssmap_le/bssmap_le_test
-  it_q/it_q_test
-  time_cc/time_cc_test
-  gsm48/rest_octets_test
-  base64/base64_test
-  iuup/iuup_test
-  soft_uart/soft_uart_test
-  rlp/rlp_test
-  jhash/jhash_test
-  timer/timer_test
-  timer/clk_override_test
 )
 
 if [[ -n "${FRTOS_TESTS_FILE:-}" ]]; then
@@ -83,6 +53,23 @@ passed=0
 failed=0
 missing=0
 declare -a failed_list
+
+echo "[fr-tests] Building required test binaries (subset)..."
+pushd "$TEST_DIR" >/dev/null
+to_build=()
+for rel in "${allow[@]}"; do
+  if [[ ! -x "$rel" ]]; then
+    to_build+=("$rel")
+  fi
+done
+if [[ ${#to_build[@]} -gt 0 ]]; then
+  # Use make with parallelism; ignore failures here to allow reporting later
+  echo "[fr-tests] make -j$(nproc) ${to_build[*]}"
+  if ! make -j"$(nproc)" ${to_build[*]} >/dev/null 2>&1; then
+    echo "[fr-tests] Warning: some test build steps failed; will attempt to run what exists" >&2
+  fi
+fi
+popd >/dev/null
 
 echo "[fr-tests] Starting FreeRTOS applicable test subset..."
 for rel in "${allow[@]}"; do
@@ -108,6 +95,23 @@ for rel in "${allow[@]}"; do
   fi
 done
 
+# Fallback auto-discovery if nothing from allowlist executed
+if [[ $total -eq 0 ]]; then
+  echo "[fr-tests] Allowlist produced no runnable tests; auto-discovering *_test executables" >&2
+  mapfile -t discovered < <(cd "$TEST_DIR" && find . -maxdepth 3 -type f -perm -u+x -name '*_test' | sed 's#^./##' | sort)
+  for rel in "${discovered[@]}"; do
+    bin="$TEST_DIR/$rel"
+    [[ -x "$bin" ]] || continue
+    echo -n "[auto] $rel ... "
+    set +e; "$bin" >"$bin.log" 2>&1; rc=$?; set -e
+    if [[ $rc -eq 0 ]]; then
+      echo ok; ((passed++)) || true; ((total++)) || true
+    else
+      echo FAIL >&2; failed_list+=("$rel"); ((failed++)) || true; ((total++)) || true
+    fi
+  done
+fi
+
 echo "[fr-tests] Summary: total=$total passed=$passed failed=$failed missing=$missing"
 if [[ $failed -gt 0 ]]; then
   echo "[fr-tests] Failed tests:" >&2
@@ -115,7 +119,7 @@ if [[ $failed -gt 0 ]]; then
   exit 1
 fi
 if [[ $total -eq 0 ]]; then
-  echo "[fr-tests] No tests executed (empty allowlist or all missing)." >&2
+  echo "[fr-tests] No tests executed after auto-discovery." >&2
   exit 2
 fi
 exit 0

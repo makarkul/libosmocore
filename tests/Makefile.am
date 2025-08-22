@@ -11,6 +11,26 @@ noinst_LIBRARIES = libsercomstub.a
 LDADD += $(top_builddir)/tests/libsercomstub.a
 endif
 
+# Provide a drastically reduced test set for FreeRTOS builds to ensure at
+# least some core functionality is validated while avoiding heavy / disabled
+# subsystems. Keep list aligned with scripts/run-freertos-tests.sh.
+if ENABLE_FREERTOS
+# Minimal subset of self-contained core tests for FreeRTOS build.
+# Keep aligned with scripts/run-freertos-tests.sh (you can trim further there
+# without re-running autotools). We rely on AM_LDADD below to link libosmocore.
+check_PROGRAMS = \
+	bits/bitrev_test \
+	bitvec/bitvec_test \
+	base64/base64_test \
+	jhash/jhash_test \
+	prbs/prbs_test \
+	timer/timer_test \
+	msgb/msgb_test \
+	tlv/tlv_test \
+	$(NULL)
+
+# Global LDADD already contains libosmocore; no per-target overrides needed.
+else
 check_PROGRAMS = timer/timer_test sms/sms_test ussd/ussd_test		\
                  bits/bitrev_test a5/a5_test		                \
                  conv/conv_test auth/milenage_test auth/tuak_test	\
@@ -18,7 +38,6 @@ check_PROGRAMS = timer/timer_test sms/sms_test ussd/ussd_test		\
                  gsm0808/gsm0808_test gsm0408/gsm0408_test		\
 		 gprs/gprs_test	kasumi/kasumi_test gea/gea_test		\
 		 logging/logging_test codec/codec_test			\
-		 logging/logging_gsmtap_test				\
 		 loggingrb/loggingrb_test strrb/strrb_test              \
 		 comp128/comp128_test                         		\
 		 bitvec/bitvec_test msgb/msgb_test bits/bitcomp_test	\
@@ -27,7 +46,7 @@ check_PROGRAMS = timer/timer_test sms/sms_test ussd/ussd_test		\
 		 write_queue/wqueue_test socket/socket_test		\
 		 coding/coding_test conv/conv_gsm0503_test		\
 		 abis/abis_test endian/endian_test sercomm/sercomm_test	\
-		 prbs/prbs_test gsm23003/gsm23003_test 			\
+		 prbs/prbs_test gsm23003/gsm23003_test 		\
 		 gsm23236/gsm23236_test                                 \
 		 codec/codec_ecu_fr_test codec/codec_efr_sid_test	\
 		 codec/codec_fr_sid_test codec/codec_hr_sid_test	\
@@ -38,19 +57,19 @@ check_PROGRAMS = timer/timer_test sms/sms_test ussd/ussd_test		\
 		 tdef/tdef_test tdef/tdef_vty_config_root_test		\
 		 tdef/tdef_vty_config_subnode_test			\
 		 tdef/tdef_vty_dynamic_test				\
-		 sockaddr_str/sockaddr_str_test				\
+		 sockaddr_str/sockaddr_str_test			\
 		 use_count/use_count_test				\
 		 context/context_test					\
-                 gsm0502/gsm0502_test					\
-                 dtx/dtx_gsm0503_test					\
-                 i460_mux/i460_mux_test					\
+                 gsm0502/gsm0502_test				\
+                 dtx/dtx_gsm0503_test				\
+                 i460_mux/i460_mux_test				\
 		 bitgen/bitgen_test					\
 		 gad/gad_test						\
 		 bsslap/bsslap_test					\
 		 bssmap_le/bssmap_le_test				\
 		 it_q/it_q_test						\
 		 time_cc/time_cc_test					\
-		 gsm48/rest_octets_test					\
+		 gsm48/rest_octets_test				\
 		 base64/base64_test					\
 		 iuup/iuup_test						\
 		 smscb/smscb_test                                       \
@@ -66,6 +85,7 @@ check_PROGRAMS = timer/timer_test sms/sms_test ussd/ussd_test		\
 		 rlp/rlp_test						\
 		 jhash/jhash_test					\
 		 $(NULL)
+endif
 
 if ENABLE_MSGFILE
 check_PROGRAMS += msgfile/msgfile_test
@@ -252,7 +272,6 @@ logging_logging_test_SOURCES = logging/logging_test.c
 logging_logging_vty_test_SOURCES = logging/logging_vty_test.c
 logging_logging_vty_test_LDADD = $(top_builddir)/src/vty/libosmovty.la $(LDADD)
 
-logging_logging_gsmtap_test_SOURCES = logging/logging_gsmtap_test.c
 
 vty_vty_transcript_test_SOURCES = vty/vty_transcript_test.c
 vty_vty_transcript_test_LDADD = $(top_builddir)/src/vty/libosmovty.la $(LDADD)

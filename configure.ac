@@ -23,7 +23,22 @@ AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC
 AC_PROG_INSTALL
-LT_INIT([pic-only disable-static])
+
+dnl ------------------------------------------------------------
+dnl Early FreeRTOS option so we can influence LT_INIT behavior
+dnl ------------------------------------------------------------
+AC_ARG_ENABLE([freertos],
+	[AS_HELP_STRING([--enable-freertos], [Build for FreeRTOS target (disable sys/socket.h usage, enable shims)])],
+	[enable_freertos=$enableval], [enable_freertos="no"]) 
+AM_CONDITIONAL(ENABLE_FREERTOS, test x"$enable_freertos" = x"yes")
+
+AS_IF([test x"$enable_freertos" = x"yes"], [
+	dnl Static-only build for FreeRTOS: avoid producing shared objects
+	LT_INIT([disable-shared])
+], [
+	dnl Normal (upstream-like) behaviour: build shared libs only
+	LT_INIT([pic-only disable-static])
+])
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -187,6 +202,7 @@ AM_PATH_PYTHON([3.4])
 
 dnl ------------------------------------------------------------------
 dnl Early feature toggles (pseudotalloc + freertos) before talloc check
+dnl (freertos already parsed above to control LT_INIT)
 dnl ------------------------------------------------------------------
 
 AC_ARG_ENABLE(pseudotalloc,
@@ -197,11 +213,7 @@ AC_ARG_ENABLE(pseudotalloc,
 		[enable_pseudotalloc=$enableval], [enable_pseudotalloc="no"])
 AM_CONDITIONAL(ENABLE_PSEUDOTALLOC, test x"$enable_pseudotalloc" = x"yes")
 
-# FreeRTOS experimental build mode (moved early so we can skip libtalloc)
-AC_ARG_ENABLE([freertos],
-	[AS_HELP_STRING([--enable-freertos], [Build for FreeRTOS target (disable sys/socket.h usage, enable shims)])],
-	[enable_freertos=$enableval], [enable_freertos="no"])
-AM_CONDITIONAL(ENABLE_FREERTOS, test x"$enable_freertos" = x"yes")
+# FreeRTOS experimental build mode side effects
 if test x"$enable_freertos" = x"yes"; then
 	AC_DEFINE([OSMO_FREERTOS],[1],[Building for FreeRTOS])
 	HAVE_SYS_SOCKET_H=0
@@ -217,7 +229,7 @@ if test x"$enable_freertos" = x"yes"; then
 	ENABLE_URING="no" # drop io_uring for FreeRTOS build
 	ENABLE_GNUTLS="no"
 	mnl="no" # disable libmnl/netlink for FreeRTOS build
-        AM_CONDITIONAL(ENABLE_LIBMNL, false)
+	AM_CONDITIONAL(ENABLE_LIBMNL, false)
 	enable_pseudotalloc="yes"
 	AM_CONDITIONAL(ENABLE_PSEUDOTALLOC, true)
 fi

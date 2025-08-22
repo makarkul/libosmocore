@@ -1421,7 +1421,9 @@ void log_target_destroy(struct log_target *target)
 		target->tgt_file.fname = NULL;
 		break;
 	case LOG_TGT_TYPE_GSMTAP:
+#ifndef DISABLE_GSMTAP
 		gsmtap_source_free(target->tgt_gsmtap.gsmtap_inst);
+#endif
 		break;
 #ifdef HAVE_SYSLOG_H
 	case LOG_TGT_TYPE_SYSLOG:

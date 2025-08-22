@@ -2,35 +2,31 @@
 #!/usr/bin/env bash
 # Unified build wrapper for libosmocore variants.
 #
-# NEW (simplified) USAGE (preferred):
-#   ./build.sh [platform] <command> [extra=...] [platform=...] [target=...]
-#     platform: optional first positional: linux | freertos (default linux)
-#     command : build | check | clean | shell  (aliases: build=all, check=test)
-# Examples:
-#   ./build.sh build               # linux build
-#   ./build.sh check               # linux build + tests (make check)
-#   ./build.sh clean               # remove linux build dir
-#   ./build.sh freertos build      # FreeRTOS trimmed static build
-#   ./build.sh freertos check      # (attempt tests inside FreeRTOS container)
-#   ./build.sh freertos shell      # dev shell
+# Usage:
+#   ./build.sh [platform=linux|freertos] <command> [extra=...]
 #
-# Legacy key=value examples (still supported, deprecated):
-#   ./build.sh platform=freertos target=test
-#   ./build.sh target=clean
+# Commands (positional, replaces prior target= syntax):
+#   build   -> full build
+#   check   -> build + run tests
+#   clean   -> remove build artifacts
+#   shell   -> open development shell (containerized)
+#              Inside the shell run:
+#                FreeRTOS:  scripts/build-libosmocore-freertos.sh   (build + mini tests)
+#                           or set EXTRA_CONFIGURE_FLAGS then rerun same script
+#                Linux:     ./build.sh platform=linux check         (full build + tests)
 #
-# Optional key/value args:
-#   platform=linux|freertos  (overridden by first positional if present)
-#   target=all|test|clean|shell (overridden by positional command if present)
-#   extra="<configure flags>"  (or extra=...)
+# Legacy target=all|test|clean|shell still works but is deprecated.
+# platform must be provided via platform=... (no positional platform argument).
+# If platform omitted defaults to linux.
 #
 # For platform=freertos this script delegates to docker compose services.
-# For platform=linux it always builds inside a container (docker compose service 'linux').
+# For platform=linux it always builds inside a container.
 set -euo pipefail
 
 platform=linux
-target=all   # internal target mapping (all|test|clean|shell)
+target=all   # internal target mapping (all|check|clean|shell)
 extra=""
-positional=()
+cmd=""
 explicit_target_set=false
 
 print_help() {
@@ -43,35 +39,20 @@ for arg in "$@"; do
     platform=*|--platform=*|PLATFORM=*) platform="${arg#*=}" ;;
     target=*|--target=*|TARGET=*) target="${arg#*=}"; explicit_target_set=true ;;
     extra=*|--extra=*|EXTRA_FLAGS=*) extra="${arg#*=}" ;;
-    *) positional+=("$arg") ;;
+  build|check|clean|shell|all)
+      # first non-assignment arg interpreted as command
+      if [[ -z "$cmd" ]]; then cmd="$arg"; else echo "[warn] Ignoring extra command '$arg'" >&2; fi ;;
+    *) echo "[warn] Unrecognized argument: $arg" >&2 ;;
   esac
 done
 
-# Positional parsing: [platform] <command>
-cmd=""
-if [[ ${#positional[@]} -gt 0 ]]; then
-  if [[ ${positional[0]} == linux || ${positional[0]} == freertos ]]; then
-    platform=${positional[0]}
-    if [[ ${#positional[@]} -gt 1 ]]; then
-      cmd=${positional[1]}
-    fi
-  else
-    cmd=${positional[0]}
-  fi
-fi
-
 if [[ -n "$cmd" ]]; then
   case "$cmd" in
-    build|all) target=all ;;
-    check|test) target=test ;;
+  build|all) target=all ;;
+  check) target=check ;;
     clean) target=clean ;;
     shell) target=shell ;;
-    *) echo "[error] Unknown command: $cmd" >&2; print_help; exit 2 ;;
   esac
-fi
-
-if $explicit_target_set && [[ -n "$cmd" ]]; then
-  echo "[warn] Both legacy target= and positional command provided; positional takes precedence ($target)." >&2
 fi
 
 case "$platform" in
@@ -79,7 +60,7 @@ case "$platform" in
   *) echo "[error] Unsupported platform: $platform" >&2; exit 2 ;;
 esac
 case "$target" in
-  all|clean|test|shell) : ;;
+  all|clean|check|shell) : ;;
   *) echo "[error] Unsupported target: $target" >&2; exit 2 ;;
 esac
 
@@ -110,8 +91,9 @@ if [[ "$platform" == freertos ]]; then
   case "$target" in
     all)
       exec docker compose run --rm -e EXTRA_CONFIGURE_FLAGS="$extra" build ;;
-    test)
-      exec docker compose run --rm -e EXTRA_CONFIGURE_FLAGS="$extra" test ;;
+    check)
+      # build script already runs tests; reuse same service
+      exec docker compose run --rm -e EXTRA_CONFIGURE_FLAGS="$extra" build ;;
     clean)
       echo "[clean] Removing FreeRTOS build directory" >&2
   rm -rf "$FREERTOS_BUILD_DIR" || true
@@ -155,7 +137,7 @@ if [[ "$platform" == linux ]]; then
     case "$target" in
       all)
         exec docker compose run --rm linux ;;
-      test)
+      check)
         exec docker compose run --rm linux bash -lc "./build.sh platform=linux target=all && cd build/linux && make check" ;;
       clean)
         echo "[clean] Removing build/linux" >&2; rm -rf "$LINUX_BUILD_DIR" || true; exit 0 ;;
@@ -167,7 +149,7 @@ if [[ "$platform" == linux ]]; then
     case "$target" in
       all)
         configure_and_build ;;
-      test)
+      check)
         configure_and_build; echo "[linux] make check"; (cd "$LINUX_BUILD_DIR" && make check) ;;
       clean)
         echo "[clean] Removing build/linux" >&2; rm -rf "$LINUX_BUILD_DIR" || true ;;

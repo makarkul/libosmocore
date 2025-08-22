@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential pkg-config git ca-certificates automake autoconf libtool \
     python3 python3-pip zip unzip file xz-utils ccache cmake \
     gcc-arm-none-eabi gdb-multiarch \
+    && ln -s /usr/bin/aclocal /usr/bin/aclocal-1.17 || true \
+    && ln -s /usr/bin/automake /usr/bin/automake-1.17 || true \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace

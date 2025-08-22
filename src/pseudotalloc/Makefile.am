@@ -3,10 +3,11 @@ AM_CFLAGS = -Wall
 
 if ENABLE_PSEUDOTALLOC
 
-lib_LTLIBRARIES = libpseudotalloc.la
+# For FreeRTOS builds we only need a static convenience lib; avoid installing or producing a shared object.
+noinst_LTLIBRARIES = libpseudotalloc.la
 
-libpseudotalloc_la_SOURCES = pseudotalloc.c
-libpseudotalloc_la_LDFLAGS = -no-undefined
+libpseudotalloc_la_SOURCES = pseudotalloc.c pseudotalloc_fallback.c
+libpseudotalloc_la_LDFLAGS = -no-undefined -static
 
 nobase_include_HEADERS = talloc.h
 
