@@ -15,7 +15,7 @@
 #                           or set EXTRA_CONFIGURE_FLAGS then rerun same script
 #                Linux:     ./build.sh platform=linux check         (full build + tests)
 #
-# Legacy target=all|test|clean|shell still works but is deprecated.
+# Legacy target=all|test|clean|shell was supported; 'test' is now removed (use 'check').
 # platform must be provided via platform=... (no positional platform argument).
 # If platform omitted defaults to linux.
 #
@@ -39,10 +39,12 @@ for arg in "$@"; do
     platform=*|--platform=*|PLATFORM=*) platform="${arg#*=}" ;;
     target=*|--target=*|TARGET=*) target="${arg#*=}"; explicit_target_set=true ;;
     extra=*|--extra=*|EXTRA_FLAGS=*) extra="${arg#*=}" ;;
-  build|check|clean|shell|all)
-      # first non-assignment arg interpreted as command
+    test)
+      echo "[error] 'test' command removed. Use 'check' instead." >&2; exit 2 ;;
+    build|check|clean|shell|all)
       if [[ -z "$cmd" ]]; then cmd="$arg"; else echo "[warn] Ignoring extra command '$arg'" >&2; fi ;;
-    *) echo "[warn] Unrecognized argument: $arg" >&2 ;;
+    *)
+      echo "[error] Unrecognized argument: $arg" >&2; exit 2 ;;
   esac
 done
 
