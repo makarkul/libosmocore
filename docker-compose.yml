@@ -1,0 +1,48 @@
+services:
+  libosmocore-freertos: &base
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.freertos
+    image: libosmocore:freertos
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:delegated
+    tty: true
+    stdin_open: true
+    environment:
+      FREERTOS_KERNEL_REF: ${FREERTOS_KERNEL_REF:-V11.1.0}
+      FREERTOS_TCP_REF: ${FREERTOS_TCP_REF:-V4.1.0}
+    command: ["/bin/bash","-lc","echo 'Use: docker compose run shell' or 'docker compose run build'"]
+
+  shell:
+    <<: *base
+    entrypoint: ["/bin/bash","-lc"]
+    command: ["source scripts/freertos_env.sh && exec bash"]
+
+  build:
+    <<: *base
+    entrypoint: ["/bin/bash","-lc"]
+    command: ["source scripts/freertos_env.sh && bash scripts/build-libosmocore-freertos.sh"]
+
+  test:
+    <<: *base
+    entrypoint: ["/bin/bash","-lc"]
+    command: ["source scripts/freertos_env.sh && bash scripts/build-libosmocore-freertos.sh && echo 'Tests executed as part of build script.'"]
+
+  linux: &linux_base
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.linux
+    image: libosmocore:linux
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:delegated
+    tty: true
+    stdin_open: true
+    command: ["/bin/bash","-lc","./build.sh platform=linux target=all"]
+
+  linux-shell:
+    <<: *linux_base
+    command: ["/bin/bash","-lc","exec bash"]
+
+name: libosmocore-freertos

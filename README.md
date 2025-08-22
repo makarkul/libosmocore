@@ -77,3 +77,49 @@ more details
 
 The current patch queue for libosmocore can be seen at
 <https://gerrit.osmocom.org/#/q/project:libosmocore+status:open>
+
+Experimental FreeRTOS Build Support
+-----------------------------------
+
+An experimental (work-in-progress) scaffold to attempt building portions of libosmocore against FreeRTOS headers is provided.
+
+Goals:
+* Single Docker image (`docker/Dockerfile.freertos`) for reproducible builds
+* Dependency fetch script pulls FreeRTOS Kernel and FreeRTOS+TCP into `deps/freertos`
+* Interactive shell (`docker compose run shell`) sets up environment without forcing a build
+* Automated build (`docker compose run build`) runs autotools configure & make with `--enable-freertos` so the templated `socket_compat.h` uses the fallback structure (as it would on target) and FreeRTOS shims are compiled. For mobile FreeRTOS targets add trims: `--enable-freertos --disable-gsmtap --disable-gb --disable-libsctp --disable-libusb --disable-multicast`.
+* In FreeRTOS mode the lightweight `pseudotalloc` allocator is auto-enabled and the external `libtalloc` dependency is suppressed, so memory helpers resolve internally.
+
+Limitations:
+* This is only a scaffold; actual porting (replacing POSIX socket, threading, timers with FreeRTOS equivalents) is not yet complete
+* Unit tests relying on Linux / POSIX may fail under this configuration
+
+Quick Start
+~~~~~~~~~~~
+
+```
+docker compose build
+docker compose run shell   # interactive environment
+# inside container:
+source scripts/freertos_env.sh
+scripts/build-libosmocore-freertos.sh
+
+# Or one-shot build:
+docker compose run build
+```
+
+Artifacts are placed under `build-freertos/`.
+
+Updating FreeRTOS Versions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Override build args:
+```
+docker compose build --build-arg FREERTOS_KERNEL_REF=V11.1.0 --build-arg FREERTOS_TCP_REF=V4.1.0
+```
+
+Next Steps (Not yet implemented)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* Implement abstraction layer for sockets/timers mapping to FreeRTOS+TCP and task notifications
+* Provide minimal stubs for unsupported libc calls to reduce porting surface
+* Gradually enable test subsets under `OSMO_FREERTOS`

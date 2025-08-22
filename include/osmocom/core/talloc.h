@@ -1,6 +1,14 @@
 /*! \file talloc.h */
 #pragma once
+#ifdef OSMO_FREERTOS
+/* In FreeRTOS build we provide a lightweight pseudotalloc in src/pseudotalloc.
+ * Use a relative include so we don't need to add extra -I flags. This header is
+ * not expected to be usable once installed for host builds; for FreeRTOS we
+ * embed the library. */
+#include "../../src/pseudotalloc/talloc.h"
+#else
 #include <talloc.h>
+#endif
 
 /*! per-thread talloc contexts.  This works around the problem that talloc is not
  * thread-safe. However, one can simply have a different set of talloc contexts for each

@@ -185,7 +185,50 @@ dnl Don't require a newer version than 3.5 for now, as poky 201705 ships that
 dnl Don't require a newer version than 3.4, we build poky 201705 on debian 8
 AM_PATH_PYTHON([3.4])
 
-PKG_CHECK_MODULES(TALLOC, [talloc >= 2.1.0])
+dnl ------------------------------------------------------------------
+dnl Early feature toggles (pseudotalloc + freertos) before talloc check
+dnl ------------------------------------------------------------------
+
+AC_ARG_ENABLE(pseudotalloc,
+		[AS_HELP_STRING(
+				[--enable-pseudotalloc],
+				[Enable building pseudotalloc library],
+		)],
+		[enable_pseudotalloc=$enableval], [enable_pseudotalloc="no"])
+AM_CONDITIONAL(ENABLE_PSEUDOTALLOC, test x"$enable_pseudotalloc" = x"yes")
+
+# FreeRTOS experimental build mode (moved early so we can skip libtalloc)
+AC_ARG_ENABLE([freertos],
+	[AS_HELP_STRING([--enable-freertos], [Build for FreeRTOS target (disable sys/socket.h usage, enable shims)])],
+	[enable_freertos=$enableval], [enable_freertos="no"])
+AM_CONDITIONAL(ENABLE_FREERTOS, test x"$enable_freertos" = x"yes")
+if test x"$enable_freertos" = x"yes"; then
+	AC_DEFINE([OSMO_FREERTOS],[1],[Building for FreeRTOS])
+	HAVE_SYS_SOCKET_H=0
+	enable_gb="no"
+	ENABLE_LIBSCTP="no"
+	ENABLE_SCTP_TESTS="no"
+	ENABLE_LIBUSB="no"
+	enable_ctrl="no"
+	enable_vty="no"
+	enable_serial="no"
+	enable_msgfile="no"
+	enable_isdn="no"
+	ENABLE_URING="no" # drop io_uring for FreeRTOS build
+	ENABLE_GNUTLS="no"
+	mnl="no" # disable libmnl/netlink for FreeRTOS build
+        AM_CONDITIONAL(ENABLE_LIBMNL, false)
+	enable_pseudotalloc="yes"
+	AM_CONDITIONAL(ENABLE_PSEUDOTALLOC, true)
+fi
+
+dnl Only pull in system libtalloc if we are NOT using pseudotalloc/freertos
+if test x"$enable_pseudotalloc" != x"yes" -a x"$enable_freertos" != x"yes"; then
+	PKG_CHECK_MODULES(TALLOC, [talloc >= 2.1.0])
+else
+	TALLOC_CFLAGS=""
+	TALLOC_LIBS=""
+fi
 
 AC_ARG_ENABLE([uring], [AS_HELP_STRING([--disable-uring], [Build without io_uring support])],
     [
@@ -208,6 +251,10 @@ AC_ARG_ENABLE([pcsc], [AS_HELP_STRING([--disable-pcsc], [Build without PC/SC sup
     [
         ENABLE_PCSC="yes"
     ])
+# FreeRTOS build never needs PC/SC; force it off if requested
+if test x"$enable_freertos" = x"yes"; then
+	ENABLE_PCSC="no"
+fi
 AS_IF([test "x$ENABLE_PCSC" = "xyes"], [
 	PKG_CHECK_MODULES(PCSC, libpcsclite)
 	AC_DEFINE([HAVE_PCSC],[1],[Build with PC/SC support])
@@ -387,13 +434,6 @@ AC_ARG_ENABLE(ctrl,
         [enable_ctrl=$enableval], [enable_ctrl="yes"])
 AM_CONDITIONAL(ENABLE_CTRL, test x"$enable_ctrl" = x"yes")
 
-AC_ARG_ENABLE(pseudotalloc,
-        [AS_HELP_STRING(
-                [--enable-pseudotalloc],
-                [Enable building pseudotalloc library],
-        )],
-        [enable_pseudotalloc=$enableval], [enable_pseudotalloc="no"])
-AM_CONDITIONAL(ENABLE_PSEUDOTALLOC, test x"$enable_pseudotalloc" = x"yes")
 
 AC_ARG_ENABLE(embedded,
 	[AS_HELP_STRING(
@@ -550,6 +590,23 @@ fi
 
 
 OSMO_AC_CODE_COVERAGE
+
+
+AC_ARG_ENABLE([gsmtap],
+	[AS_HELP_STRING([--disable-gsmtap], [Omit GSMTAP logging/encapsulation support])],
+	[enable_gsmtap=$enableval], [enable_gsmtap="yes"])
+AM_CONDITIONAL(ENABLE_GSMTAP, test x"$enable_gsmtap" = x"yes")
+if test x"$enable_gsmtap" != x"yes"; then
+	AC_DEFINE([DISABLE_GSMTAP],[1],[GSMTAP support disabled])
+fi
+
+AC_ARG_ENABLE([multicast],
+	[AS_HELP_STRING([--disable-multicast], [Omit multicast socket helpers (mcast loop, subscribe, etc.)])],
+	[enable_multicast=$enableval], [enable_multicast="yes"])
+if test x"$enable_multicast" != x"yes"; then
+	AC_DEFINE([DISABLE_OSMO_MCAST],[1],[Multicast helpers disabled])
+fi
+
 
 dnl Check if the compiler supports specified GCC's built-in function
 AC_DEFUN([CHECK_BUILTIN_SUPPORT], [

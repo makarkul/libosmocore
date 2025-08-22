@@ -4,7 +4,9 @@
 
 #include <unistd.h>
 #include <stdbool.h>
+#if defined(HAVE_LIBSCTP) && !defined(OSMO_FREERTOS)
 #include <netinet/sctp.h>
+#endif
 
 #include <osmocom/core/osmo_io.h>
 #include <osmocom/core/linuxlist.h>

@@ -21,6 +21,10 @@ libosmocore_la_LIBADD = \
 	$(URING_LIBS) \
 	$(NULL)
 
+if ENABLE_PSEUDOTALLOC
+libosmocore_la_LIBADD += ../pseudotalloc/libpseudotalloc.la
+endif
+
 libosmocore_la_SOURCES = \
 	application.c \
 	backtrace.c \
@@ -40,12 +44,10 @@ libosmocore_la_SOURCES = \
 	crc64gen.c \
 	exec.c \
 	fsm.c \
-	gsmtap_util.c \
 	isdnhdlc.c \
 	it_q.c \
 	logging.c \
 	logging_syslog.c \
-	logging_gsmtap.c \
 	loggingrb.c \
 	macaddr.c \
 	msgb.c \
@@ -82,6 +84,10 @@ libosmocore_la_SOURCES = \
 	probes.d \
 	$(NULL)
 
+if ENABLE_GSMTAP
+libosmocore_la_SOURCES += gsmtap_util.c logging_gsmtap.c
+endif
+
 if HAVE_SSSE3
 libosmocore_la_SOURCES += conv_acc_sse.c
 if HAVE_SSE4_1
@@ -106,6 +112,11 @@ libosmocore_la_SOURCES += conv_acc_neon.c
 endif
 
 BUILT_SOURCES = crc8gen.c crc16gen.c crc32gen.c crc64gen.c
+
+if ENABLE_FREERTOS
+libosmocore_la_SOURCES += freertos_sock_shim.c
+libosmocore_la_SOURCES += socket_freertos.c
+endif
 
 EXTRA_DIST = \
 	conv_acc_sse_impl.h \

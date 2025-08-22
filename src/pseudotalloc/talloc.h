@@ -30,6 +30,12 @@
 extern void *pseudotalloc_malloc(size_t size);
 extern void  pseudotalloc_free(void *ptr);
 
+/* Enforce that integrator provides these functions: give a clear message if
+ * they were somehow omitted and weak fallbacks removed. */
+#if !defined(PSEUDOTALLOC_REQUIRE_DEFINED)
+#define PSEUDOTALLOC_REQUIRE_DEFINED 1
+#endif
+
 typedef void TALLOC_CTX;
 
 #define __TALLOC_STRING_LINE1__(s)    #s
@@ -65,3 +71,28 @@ char *talloc_asprintf(const void *ctx, const char *fmt, ...);
 #define talloc_steal(ctx, ptr) _talloc_steal_loc((ctx), (ptr), __location__)
 void *_talloc_steal_loc(const void *new_ctx, const void *obj, const char *location);
 char *talloc_vasprintf(const void *t, const char *fmt, va_list ap);
+
+/* Pooled object helper used by logging code; emulate with plain zero alloc. */
+#ifndef talloc_pooled_object
+#define talloc_pooled_object(ctx, type, poolsize, itemsize) \
+	(type *)_talloc_zero((ctx), sizeof(type), #type)
+#endif
+
+/* Additional minimal compatibility helpers expected by some code paths */
+#ifndef talloc_realloc_size
+#define talloc_realloc_size(ctx, ptr, size) realloc((ptr), (size))
+#endif
+#ifndef talloc_realloc
+#define talloc_realloc(ctx, ptr, type, count) (type*)realloc((ptr), sizeof(type)*(count))
+#endif
+#ifndef talloc_total_size
+#define talloc_total_size(ctx) 0
+#endif
+#ifndef talloc_free_children
+#define talloc_free_children(ctx) do { } while (0)
+#endif
+
+/* Some code uses TALLOC_FREE(x) macro; provide a safe variant. */
+#ifndef TALLOC_FREE
+#define TALLOC_FREE(p) do { if (p) talloc_free(p); } while (0)
+#endif

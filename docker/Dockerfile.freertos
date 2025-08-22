@@ -1,0 +1,39 @@
+## Minimal Docker image for building libosmocore against FreeRTOS headers
+## Single authoritative container per requirements.
+
+FROM debian:bookworm-slim
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+## Versions (override with --build-arg)
+ARG FREERTOS_KERNEL_REPO="https://github.com/FreeRTOS/FreeRTOS-Kernel.git"
+ARG FREERTOS_KERNEL_REF="V11.1.0"
+ARG FREERTOS_TCP_REPO="https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git"
+ARG FREERTOS_TCP_REF="V4.1.0"
+
+ENV FREERTOS_DEPS_DIR=/workspace/deps/freertos \
+    FREERTOS_PORT=GCC_POSIX \
+    PATH=/usr/local/bin:$PATH \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8
+
+## Base build tooling
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential pkg-config git ca-certificates automake autoconf libtool \
+    python3 python3-pip zip unzip file xz-utils ccache cmake \
+    gcc-arm-none-eabi gdb-multiarch \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+## Copy only scripts first for better layer caching
+COPY scripts/freertos_deps_fetch.sh scripts/freertos_env.sh /workspace/scripts/
+
+RUN bash /workspace/scripts/freertos_deps_fetch.sh --kernel-ref "$FREERTOS_KERNEL_REF" --tcp-ref "$FREERTOS_TCP_REF"
+
+## The source will be bind-mounted by docker compose; still copy minimal metadata to avoid errors
+COPY README.md ./
+
+## Environment setup (shell mode will source freertos_env.sh)
+ENTRYPOINT ["/bin/bash","-lc"]
+CMD ["echo","Container ready. Run 'docker compose run shell' for interactive build shell."]
