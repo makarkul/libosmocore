@@ -1,26 +1,37 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 # Unified build wrapper for libosmocore variants.
-# Usage examples:
-#   ./build.sh                        # default (platform=linux target=all)
-#   ./build.sh platform=freertos      # FreeRTOS trimmed build ("all")
-#   ./build.sh target=clean           # Clean linux build artifacts
-#   ./build.sh platform=freertos target=test
-#   ./build.sh platform=freertos target=shell  # Open FreeRTOS dev shell
-#   ./build.sh help
 #
-# Recognized parameters (key=value or --key=value or KEY=VALUE):
-#   platform: linux | freertos        (default: linux)
-#   target:   all | clean | test | shell  (default: all)
-#   extra:    Extra flags passed to underlying configure/build scripts
+# NEW (simplified) USAGE (preferred):
+#   ./build.sh [platform] <command> [extra=...] [platform=...] [target=...]
+#     platform: optional first positional: linux | freertos (default linux)
+#     command : build | check | clean | shell  (aliases: build=all, check=test)
+# Examples:
+#   ./build.sh build               # linux build
+#   ./build.sh check               # linux build + tests (make check)
+#   ./build.sh clean               # remove linux build dir
+#   ./build.sh freertos build      # FreeRTOS trimmed static build
+#   ./build.sh freertos check      # (attempt tests inside FreeRTOS container)
+#   ./build.sh freertos shell      # dev shell
+#
+# Legacy key=value examples (still supported, deprecated):
+#   ./build.sh platform=freertos target=test
+#   ./build.sh target=clean
+#
+# Optional key/value args:
+#   platform=linux|freertos  (overridden by first positional if present)
+#   target=all|test|clean|shell (overridden by positional command if present)
+#   extra="<configure flags>"  (or extra=...)
 #
 # For platform=freertos this script delegates to docker compose services.
-# For platform=linux it performs a local autotools build (or you can adapt
-# to use a container if desired).
+# For platform=linux it always builds inside a container (docker compose service 'linux').
 set -euo pipefail
 
 platform=linux
-target=all
+target=all   # internal target mapping (all|test|clean|shell)
 extra=""
+positional=()
+explicit_target_set=false
 
 print_help() {
   sed -n '1,60p' "$0" | grep -E '^#' | sed 's/^# ?//'
@@ -30,11 +41,38 @@ for arg in "$@"; do
   case "$arg" in
     help|-h|--help) print_help; exit 0 ;;
     platform=*|--platform=*|PLATFORM=*) platform="${arg#*=}" ;;
-    target=*|--target=*|TARGET=*) target="${arg#*=}" ;;
-  extra=*|--extra=*|EXTRA_FLAGS=*) extra="${arg#*=}" ;;
-    *) echo "[warn] Unrecognized argument: $arg" >&2 ;;
+    target=*|--target=*|TARGET=*) target="${arg#*=}"; explicit_target_set=true ;;
+    extra=*|--extra=*|EXTRA_FLAGS=*) extra="${arg#*=}" ;;
+    *) positional+=("$arg") ;;
   esac
 done
+
+# Positional parsing: [platform] <command>
+cmd=""
+if [[ ${#positional[@]} -gt 0 ]]; then
+  if [[ ${positional[0]} == linux || ${positional[0]} == freertos ]]; then
+    platform=${positional[0]}
+    if [[ ${#positional[@]} -gt 1 ]]; then
+      cmd=${positional[1]}
+    fi
+  else
+    cmd=${positional[0]}
+  fi
+fi
+
+if [[ -n "$cmd" ]]; then
+  case "$cmd" in
+    build|all) target=all ;;
+    check|test) target=test ;;
+    clean) target=clean ;;
+    shell) target=shell ;;
+    *) echo "[error] Unknown command: $cmd" >&2; print_help; exit 2 ;;
+  esac
+fi
+
+if $explicit_target_set && [[ -n "$cmd" ]]; then
+  echo "[warn] Both legacy target= and positional command provided; positional takes precedence ($target)." >&2
+fi
 
 case "$platform" in
   linux|freertos) : ;; 
