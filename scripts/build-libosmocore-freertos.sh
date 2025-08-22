@@ -33,11 +33,11 @@ echo "[build] Building"
 rm -f include/osmocom/core/socket_compat.h || true
 make -j"$(nproc)"
 
-echo "[build] (Optional) Running unit tests that don't require OS specifics"
-if make -q check 2>/dev/null; then
-  make check || echo "[warn] Some tests may fail under FreeRTOS port scaffolding"
+echo "[build] Running curated FreeRTOS test subset"
+if [[ -x "$ROOT_DIR/scripts/run-freertos-tests.sh" ]]; then
+  "$ROOT_DIR/scripts/run-freertos-tests.sh" "$BUILD_DIR" || echo "[warn] Some FreeRTOS subset tests failed"
 else
-  echo "[info] 'check' target not ready (possible partial port)."
+  echo "[warn] FreeRTOS test runner script missing"
 fi
 
 echo "[build] Done. Artifacts in $BUILD_DIR"
