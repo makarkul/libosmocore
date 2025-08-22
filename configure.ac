@@ -12,7 +12,8 @@ AC_CONFIG_TESTDIR(tests/osmo-config-merge)
 CFLAGS="$CFLAGS -std=gnu11"
 
 dnl kernel style compile messages
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+# Silence rules disabled for portability (avoids invoking missing '--silent')
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([no])])
 
 dnl include release helper
 RELMAKE='-include osmo-release.mk'
@@ -32,13 +33,15 @@ AC_ARG_ENABLE([freertos],
 	[enable_freertos=$enableval], [enable_freertos="no"]) 
 AM_CONDITIONAL(ENABLE_FREERTOS, test x"$enable_freertos" = x"yes")
 
-AS_IF([test x"$enable_freertos" = x"yes"], [
-	dnl Static-only build for FreeRTOS: avoid producing shared objects
-	LT_INIT([disable-shared])
-], [
-	dnl Normal (upstream-like) behaviour: build shared libs only
-	LT_INIT([pic-only disable-static])
-])
+# Unconditional LT_INIT to ensure libtool script is always generated.
+LT_INIT
+
+# Adjust libtool build preferences (informational; actual shared/static
+# selection for FreeRTOS enforced later via enable_shared/enable_static vars).
+if test x"$enable_freertos" = x"yes"; then
+	enable_shared=no
+	enable_static=yes
+fi
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -226,7 +229,6 @@ if test x"$enable_freertos" = x"yes"; then
 	enable_serial="no"
 	enable_msgfile="no"
 	enable_isdn="no"
-	ENABLE_URING="no" # drop io_uring for FreeRTOS build
 	ENABLE_GNUTLS="no"
 	mnl="no" # disable libmnl/netlink for FreeRTOS build
 	AM_CONDITIONAL(ENABLE_LIBMNL, false)
@@ -242,13 +244,8 @@ else
 	TALLOC_LIBS=""
 fi
 
-AC_ARG_ENABLE([uring], [AS_HELP_STRING([--disable-uring], [Build without io_uring support])],
-    [
-        ENABLE_URING=$enableval
-    ],
-    [
-        ENABLE_URING="yes"
-    ])
+AC_ARG_ENABLE([uring], [AS_HELP_STRING([--enable-uring], [Explicitly build with io_uring support (disabled by default)])],
+	[ENABLE_URING=$enableval], [ENABLE_URING="no"])dnl Default off for all builds (FreeRTOS + Linux)
 AS_IF([test "x$ENABLE_URING" = "xyes"], [
 	PKG_CHECK_MODULES(URING, [liburing >= 0.7])
 	AC_DEFINE([HAVE_URING],[1],[Build with io_uring support])
@@ -353,8 +350,8 @@ AC_ARG_ENABLE([sctp-tests], [AS_HELP_STRING([--disable-sctp-tests], [Do not run 
 	[ENABLE_SCTP_TESTS=$enableval], [ENABLE_SCTP_TESTS="yes"])
 AM_CONDITIONAL(ENABLE_SCTP_TESTS, test x"$ENABLE_SCTP_TESTS" = x"yes")
 
-AC_ARG_ENABLE([uring-tests], [AS_HELP_STRING([--disable-uring-tests], [Do not run io_uring tests])],
-	[ENABLE_URING_TESTS=$enableval], [ENABLE_URING_TESTS="yes"])
+AC_ARG_ENABLE([uring-tests], [AS_HELP_STRING([--enable-uring-tests], [Run io_uring tests if io_uring enabled (disabled by default)])],
+	[ENABLE_URING_TESTS=$enableval], [ENABLE_URING_TESTS="no"])dnl Default off until feature re-enabled intentionally
 AM_CONDITIONAL(ENABLE_URING_TESTS, test x"$ENABLE_URING_TESTS" = x"yes")
 AC_SUBST(ENABLE_URING_TESTS)
 

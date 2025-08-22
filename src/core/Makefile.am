@@ -4,7 +4,7 @@
 LIBVERSION=23:0:1
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include -I$(top_builddir)
-AM_CFLAGS = -Wall $(TALLOC_CFLAGS) $(PTHREAD_CFLAGS) $(LIBSCTP_CFLAGS) $(LIBMNL_CFLAGS) $(URING_CFLAGS)
+AM_CFLAGS = -Wall $(TALLOC_CFLAGS) $(PTHREAD_CFLAGS) $(LIBSCTP_CFLAGS) $(LIBMNL_CFLAGS)
 
 if ENABLE_PSEUDOTALLOC
 AM_CPPFLAGS += -I$(top_srcdir)/src/pseudotalloc
@@ -18,7 +18,6 @@ libosmocore_la_LIBADD = \
 	$(LIBRARY_RT) \
 	$(PTHREAD_LIBS) \
 	$(LIBSCTP_LIBS) \
-	$(URING_LIBS) \
 	$(NULL)
 
 if ENABLE_PSEUDOTALLOC
