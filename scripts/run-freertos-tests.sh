@@ -15,7 +15,7 @@ set -euo pipefail
 # Exit code: 0 if all selected tests pass; 1 if any fail; 2 if no tests executed.
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-BUILD_DIR=${1:-"$ROOT_DIR/build-freertos"}
+BUILD_DIR=${1:-"$ROOT_DIR/build/freertos"}
 TEST_DIR="$BUILD_DIR/tests"
 
 if [[ ! -d "$TEST_DIR" ]]; then

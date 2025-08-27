@@ -3,7 +3,7 @@ set -euo pipefail
 set -x
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-BUILD_DIR=$ROOT_DIR/build-freertos
+BUILD_DIR=$ROOT_DIR/build/freertos
 mkdir -p "$BUILD_DIR"
 
 if [[ -z "${OSMO_FREERTOS:-}" ]]; then

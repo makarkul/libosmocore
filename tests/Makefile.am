@@ -11,6 +11,16 @@ noinst_LIBRARIES = libsercomstub.a
 LDADD += $(top_builddir)/tests/libsercomstub.a
 endif
 
+if ENABLE_FREERTOS
+if ENABLE_SERCOM_STUB
+noinst_LIBRARIES += libpseudotallocstub.a
+else
+noinst_LIBRARIES = libpseudotallocstub.a
+endif
+libpseudotallocstub_a_SOURCES = pseudotalloc_test_stub.c
+LDADD += $(top_builddir)/tests/libpseudotallocstub.a
+endif
+
 # Provide a drastically reduced test set for FreeRTOS builds to ensure at
 # least some core functionality is validated while avoiding heavy / disabled
 # subsystems. Keep list aligned with scripts/run-freertos-tests.sh.
