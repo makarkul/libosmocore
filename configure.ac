@@ -225,7 +225,6 @@ if test x"$enable_freertos" = x"yes"; then
 	ENABLE_SCTP_TESTS="no"
 	ENABLE_LIBUSB="no"
 	enable_ctrl="no"
-	enable_vty="no"
 	enable_serial="no"
 	enable_msgfile="no"
 	enable_isdn="no"
@@ -234,6 +233,12 @@ if test x"$enable_freertos" = x"yes"; then
 	AM_CONDITIONAL(ENABLE_LIBMNL, false)
 	enable_pseudotalloc="yes"
 	AM_CONDITIONAL(ENABLE_PSEUDOTALLOC, true)
+	dnl NOTE: We previously forced enable_vty="no" here to trim features.
+	dnl To allow building libosmovty for FreeRTOS (e.g. for CLI access),
+	dnl we no longer override the user's choice. Default AC_ARG_ENABLE(vty)
+	dnl logic (later in this file) will set it to "yes" unless explicitly
+	dnl disabled via --disable-vty. If a very small footprint build is
+	dnl desired, pass --disable-vty manually or re-introduce a guard.
 fi
 
 dnl Only pull in system libtalloc if we are NOT using pseudotalloc/freertos

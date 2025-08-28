@@ -15,7 +15,11 @@ pushd "$ROOT_DIR" >/dev/null
 
 echo "[build] Autotools bootstrap (always)"
 autoreconf -fi
-EXTRA_FLAGS="--disable-gsmtap --disable-gb --disable-libsctp --disable-libusb --disable-multicast --disable-vty --disable-ctrl --disable-serial --disable-msgfile --disable-uring --disable-pcsc --disable-utilities --disable-gnutls --disable-libmnl"
+# Default feature trimming for FreeRTOS builds. Intentionally DO NOT disable
+# VTY anymore so libosmovty builds by default (telnet server may still require
+# additional socket shims for full runtime functionality). Users can still
+# override by exporting EXTRA_CONFIGURE_FLAGS or adding --disable-vty.
+EXTRA_FLAGS="--disable-gsmtap --disable-gb --disable-libsctp --disable-libusb --disable-multicast --disable-ctrl --disable-serial --disable-msgfile --disable-uring --disable-pcsc --disable-utilities --disable-gnutls --disable-libmnl"
 
 pushd "$BUILD_DIR" >/dev/null
 EXTRA_CONFIGURE_FLAGS=${EXTRA_CONFIGURE_FLAGS:-"$EXTRA_FLAGS"}

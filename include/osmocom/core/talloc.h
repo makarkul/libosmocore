@@ -1,11 +1,17 @@
 /*! \file talloc.h */
 #pragma once
+
+/* Ensure Autoconf defines (OSMO_FREERTOS) are visible even when this header
+ * is included before any source file had the chance to include config.h. */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef OSMO_FREERTOS
-/* In FreeRTOS build we provide a lightweight pseudotalloc in src/pseudotalloc.
- * Use a relative include so we don't need to add extra -I flags. This header is
- * not expected to be usable once installed for host builds; for FreeRTOS we
- * embed the library. */
-#include "../../src/pseudotalloc/talloc.h"
+/* In FreeRTOS builds we provide a lightweight pseudotalloc in src/pseudotalloc.
+ * Use a relative include so we don't need extra -I flags.  The path needs to
+ * ascend three levels from include/osmocom/core/ to reach the project root. */
+#include "../../../src/pseudotalloc/talloc.h"
 #else
 #include <talloc.h>
 #endif
