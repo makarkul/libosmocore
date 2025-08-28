@@ -116,6 +116,7 @@ BUILT_SOURCES = crc8gen.c crc16gen.c crc32gen.c crc64gen.c
 if ENABLE_FREERTOS
 libosmocore_la_SOURCES += freertos_sock_shim.c
 libosmocore_la_SOURCES += freertos_tcp_compat.c
+libosmocore_la_SOURCES += freertos_bsd_wrappers.c
 libosmocore_la_SOURCES += socket_freertos.c
 endif
 

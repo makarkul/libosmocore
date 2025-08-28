@@ -11,6 +11,8 @@
 #define DLGLOBAL 0
 #endif
 
+/* If FreeRTOS+TCP headers are present we use real sockets; otherwise we
+ * provide stub failures so higher layers can still link. */
 #ifdef OSMO_FR_HAVE_FREERTOS_TCP
 
 /* Simple static table mapping pseudo-fd -> Socket_t */
@@ -45,6 +47,12 @@ static Socket_t *fd_to_sock(int fd) {
     if (idx < 0 || idx >= FR_MAX_SOCKETS) return NULL;
     if (!g_sock_tbl[idx].used) return NULL;
     return &g_sock_tbl[idx].sock;
+}
+
+int fr_is_pseudo_fd(int fd) {
+    int idx = fd - g_next_fd_base;
+    if (idx < 0 || idx >= FR_MAX_SOCKETS) return 0;
+    return g_sock_tbl[idx].used ? 1 : 0;
 }
 
 Socket_t fr_get_socket(int fd) {
@@ -144,6 +152,20 @@ int fr_send(int fd, const void *buf, size_t len) {
     if (r < 0) return -1;
     return (int)r;
 }
+
+#else /* !OSMO_FR_HAVE_FREERTOS_TCP */
+
+/* Stub implementations (no networking available) */
+int fr_is_pseudo_fd(int fd) { (void)fd; return 0; }
+int fr_socket(int domain, int type, int protocol) { (void)domain; (void)type; (void)protocol; return -1; }
+int fr_bind(int fd, const char *ip, uint16_t port) { (void)fd; (void)ip; (void)port; return -1; }
+int fr_listen(int fd, int backlog) { (void)fd; (void)backlog; return -1; }
+int fr_accept(int fd) { (void)fd; return -1; }
+int fr_connect(int fd, const char *ip, uint16_t port) { (void)fd; (void)ip; (void)port; return -1; }
+int fr_close(int fd) { (void)fd; return 0; }
+int fr_recv(int fd, void *buf, size_t len) { (void)fd; (void)buf; (void)len; return -1; }
+int fr_send(int fd, const void *buf, size_t len) { (void)fd; (void)buf; (void)len; return -1; }
+Socket_t fr_get_socket(int fd) { (void)fd; return (Socket_t)0; }
 
 #endif /* OSMO_FR_HAVE_FREERTOS_TCP */
 
